@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p \"C:\\\\Users\\\\BlazDaul\\\\.claude\\\\sessions\\\\tools\" \"C:\\\\Users\\\\BlazDaul\\\\.claude\\\\sessions\\\\api\")"
+    ]
+  }
+}

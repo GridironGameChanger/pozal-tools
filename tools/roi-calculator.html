@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pozal ROI Calculator</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f0f4f3;
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 48px 16px;
+    color: #1a1a1a;
+  }
+
+  .card {
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 4px 32px rgba(0,0,0,0.08);
+    width: 100%;
+    max-width: 720px;
+    padding: 48px;
+  }
+
+  .card-header {
+    margin-bottom: 40px;
+  }
+
+  .badge {
+    display: inline-block;
+    background: #e8f7f2;
+    color: #4b9cd3;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 100px;
+    margin-bottom: 14px;
+  }
+
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.25;
+    color: #111;
+  }
+
+  h1 span { color: #4b9cd3; }
+
+  .subtitle {
+    margin-top: 8px;
+    font-size: 15px;
+    color: #666;
+    line-height: 1.5;
+  }
+
+  .divider {
+    border: none;
+    border-top: 1px solid #f0f0f0;
+    margin: 32px 0;
+  }
+
+  .inputs-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  .field label {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 10px;
+  }
+
+  .field label .value-display {
+    font-size: 15px;
+    font-weight: 700;
+    color: #4b9cd3;
+    min-width: 80px;
+    text-align: right;
+  }
+
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 6px;
+    border-radius: 3px;
+    background: #e8e8e8;
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #4b9cd3;
+    box-shadow: 0 2px 6px rgba(29,158,117,0.35);
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+
+  input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+    box-shadow: 0 3px 10px rgba(29,158,117,0.45);
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: 50%;
+    background: #4b9cd3;
+    box-shadow: 0 2px 6px rgba(29,158,117,0.35);
+    cursor: pointer;
+  }
+
+  input[type="number"] {
+    width: 90px;
+    padding: 6px 10px;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a1a1a;
+    text-align: right;
+    outline: none;
+    transition: border-color 0.15s;
+    background: #fafafa;
+  }
+
+  input[type="number"]:focus {
+    border-color: #4b9cd3;
+    background: #fff;
+  }
+
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button { opacity: 1; }
+
+  .range-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4px;
+    font-size: 11px;
+    color: #aaa;
+  }
+
+  /* Results */
+  .results-section { margin-top: 40px; }
+
+  .results-heading {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #999;
+    margin-bottom: 16px;
+  }
+
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  @media (max-width: 520px) {
+    .metrics-grid { grid-template-columns: 1fr; }
+    .card { padding: 28px 20px; }
+    h1 { font-size: 22px; }
+  }
+
+  .metric-card {
+    border-radius: 14px;
+    padding: 20px 22px;
+    background: #f8fdfb;
+    border: 1.5px solid #e2f4ed;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .metric-card.highlight {
+    background: #4b9cd3;
+    border-color: #4b9cd3;
+  }
+
+  .metric-card::before {
+    content: '';
+    position: absolute;
+    top: -20px;
+    right: -20px;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: rgba(29,158,117,0.07);
+  }
+
+  .metric-card.highlight::before {
+    background: rgba(255,255,255,0.1);
+  }
+
+  .metric-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #888;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .metric-card.highlight .metric-label { color: rgba(255,255,255,0.75); }
+
+  .metric-value {
+    font-size: 30px;
+    font-weight: 800;
+    color: #111;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+
+  .metric-card.highlight .metric-value { color: #fff; }
+
+  .metric-sub {
+    font-size: 12px;
+    color: #aaa;
+    margin-top: 5px;
+  }
+
+  .metric-card.highlight .metric-sub { color: rgba(255,255,255,0.65); }
+
+  /* ROI pill */
+  .roi-banner {
+    margin-top: 14px;
+    background: #fff8e8;
+    border: 1.5px solid #f5d87a;
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .roi-icon {
+    font-size: 26px;
+    flex-shrink: 0;
+  }
+
+  .roi-text { flex: 1; }
+
+  .roi-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #b07d00;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .roi-value {
+    font-size: 26px;
+    font-weight: 800;
+    color: #7a5500;
+    line-height: 1.1;
+  }
+
+  .roi-sub {
+    font-size: 12px;
+    color: #a08030;
+    margin-top: 2px;
+  }
+
+  /* CTA */
+  .cta-wrap {
+    margin-top: 32px;
+    text-align: center;
+  }
+
+  .cta-btn {
+    display: inline-block;
+    background: #4b9cd3;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    padding: 16px 36px;
+    border-radius: 12px;
+    text-decoration: none;
+    letter-spacing: 0.01em;
+    box-shadow: 0 4px 18px rgba(29,158,117,0.35);
+    transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+  }
+
+  .cta-btn:hover {
+    background: #14171f;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(20,23,31,0.45);
+  }
+
+  .cta-btn:active {
+    transform: translateY(0);
+  }
+
+  .cta-note {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #bbb;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="card-header">
+    <div class="badge">ROI Calculator</div>
+    <h1>How much could <span>Pozal</span> make you?</h1>
+    <p class="subtitle">Adjust the sliders to match your business — see your projected revenue uplift and time savings in real time.</p>
+  </div>
+
+  <hr class="divider">
+
+  <div class="inputs-grid">
+
+    <!-- Proposals per month -->
+    <div class="field">
+      <label>
+        Proposals submitted per month
+        <span class="value-display" id="val-proposals">10</span>
+      </label>
+      <div class="slider-row">
+        <input type="range" id="sl-proposals" min="1" max="300" value="10" step="1">
+        <input type="number" id="num-proposals" min="1" max="300" value="10">
+      </div>
+      <div class="range-labels"><span>1</span><span>300</span></div>
+    </div>
+
+    <!-- Average contract value (log scale) -->
+    <div class="field">
+      <label>
+        Average contract value
+        <span class="value-display" id="val-acv">$50,000</span>
+      </label>
+      <div class="slider-row">
+        <input type="range" id="sl-acv" min="0" max="1000" value="459" step="1">
+        <input type="number" id="num-acv" min="10000" max="1000000000" value="50000" step="1000">
+      </div>
+      <div class="range-labels"><span>$10k</span><span>$1B</span></div>
+    </div>
+
+    <!-- Current win rate -->
+    <div class="field">
+      <label>
+        Current win rate
+        <span class="value-display" id="val-winrate">25%</span>
+      </label>
+      <div class="slider-row">
+        <input type="range" id="sl-winrate" min="5" max="60" value="25" step="1">
+        <input type="number" id="num-winrate" min="5" max="60" value="25">
+      </div>
+      <div class="range-labels"><span>5%</span><span>60%</span></div>
+    </div>
+
+    <!-- Hours per proposal -->
+    <div class="field">
+      <label>
+        Hours spent per proposal
+        <span class="value-display" id="val-hours">20 hrs</span>
+      </label>
+      <div class="slider-row">
+        <input type="range" id="sl-hours" min="4" max="80" value="20" step="1">
+        <input type="number" id="num-hours" min="4" max="80" value="20">
+      </div>
+      <div class="range-labels"><span>4 hrs</span><span>80 hrs</span></div>
+    </div>
+
+    <!-- Hourly cost -->
+    <div class="field">
+      <label>
+        Hourly cost of proposal staff
+        <span class="value-display" id="val-rate">$65/hr</span>
+      </label>
+      <div class="slider-row">
+        <input type="range" id="sl-rate" min="25" max="150" value="65" step="1">
+        <input type="number" id="num-rate" min="25" max="150" value="65">
+      </div>
+      <div class="range-labels"><span>$25</span><span>$150</span></div>
+    </div>
+
+  </div>
+
+  <!-- Results -->
+  <div class="results-section">
+    <div class="results-heading">Your projected impact</div>
+
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">Current Annual Revenue</div>
+        <div class="metric-value" id="out-current-rev">—</div>
+        <div class="metric-sub">from won proposals today</div>
+      </div>
+      <div class="metric-card highlight">
+        <div class="metric-label">Projected Annual Revenue</div>
+        <div class="metric-value" id="out-proj-rev">—</div>
+        <div class="metric-sub">with +15% win rate uplift</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Hours Saved / Month</div>
+        <div class="metric-value" id="out-hours-saved">—</div>
+        <div class="metric-sub">30% reduction in proposal time</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Time Savings Value / Month</div>
+        <div class="metric-value" id="out-time-value">—</div>
+        <div class="metric-sub">based on your staff rate</div>
+      </div>
+    </div>
+
+    <div class="roi-banner">
+      <div class="roi-icon">📈</div>
+      <div class="roi-text">
+        <div class="roi-label">12-Month ROI (Pozal at $299/mo)</div>
+        <div class="roi-value" id="out-roi">—</div>
+        <div class="roi-sub" id="out-roi-sub">net gain after $3,588 in Pozal costs</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cta-wrap">
+    <a class="cta-btn" href="https://www.pozal.ai" target="_blank" rel="noopener">
+      See how Pozal gets you there →
+    </a>
+    <p class="cta-note">No credit card required &nbsp;·&nbsp; Setup in minutes</p>
+  </div>
+</div>
+
+<script>
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  const fmt = (n) => {
+    if (n >= 1e9) return '$' + (n / 1e9).toFixed(2).replace(/\.?0+$/, '') + 'B';
+    if (n >= 1e6) return '$' + (n / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M';
+    if (n >= 1e3) return '$' + (n / 1e3).toFixed(1).replace(/\.?0+$/, '') + 'k';
+    return '$' + Math.round(n).toLocaleString();
+  };
+
+  // Log-scale helpers for ACV slider (10k–1B)
+  const ACV_MIN = 10000, ACV_MAX = 1000000000;
+  const logMin = Math.log10(ACV_MIN), logMax = Math.log10(ACV_MAX);
+
+  function sliderToAcv(s) {
+    return Math.round(Math.pow(10, logMin + (s / 1000) * (logMax - logMin)));
+  }
+
+  function acvToSlider(v) {
+    return Math.round(((Math.log10(Math.max(v, ACV_MIN)) - logMin) / (logMax - logMin)) * 1000);
+  }
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  const state = {
+    proposals: 10,
+    acv: 50000,
+    winrate: 25,
+    hours: 20,
+    rate: 65,
+  };
+
+  // ── Calculate & Render ────────────────────────────────────────────────────
+  function calculate() {
+    const { proposals, acv, winrate, hours, rate } = state;
+
+    const currentAnnualWins = proposals * (winrate / 100) * 12;
+    const currentRev = currentAnnualWins * acv;
+
+    const upliftedWinRate = winrate + 15;
+    const projAnnualWins = proposals * (upliftedWinRate / 100) * 12;
+    const projRev = projAnnualWins * acv;
+
+    const hoursSavedMonthly = proposals * hours * 0.30;
+    const timeSavedValueMonthly = hoursSavedMonthly * rate;
+
+    const pozalCostAnnual = 299 * 12;
+    const revUplift = projRev - currentRev;
+    const timeSavedAnnual = timeSavedValueMonthly * 12;
+    const netGain = revUplift + timeSavedAnnual - pozalCostAnnual;
+    const roiPct = (netGain / pozalCostAnnual) * 100;
+
+    document.getElementById('out-current-rev').textContent = fmt(currentRev);
+    document.getElementById('out-proj-rev').textContent = fmt(projRev);
+    document.getElementById('out-hours-saved').textContent = Math.round(hoursSavedMonthly) + ' hrs';
+    document.getElementById('out-time-value').textContent = fmt(timeSavedValueMonthly);
+
+    const roiEl = document.getElementById('out-roi');
+    const roiSub = document.getElementById('out-roi-sub');
+
+    if (netGain >= 0) {
+      roiEl.textContent = Math.round(roiPct).toLocaleString() + '% ROI';
+      roiSub.textContent = '+' + fmt(netGain) + ' net gain after $3,588 in Pozal costs';
+    } else {
+      roiEl.textContent = fmt(netGain) + ' net';
+      roiSub.textContent = 'Increase proposals or contract value to improve ROI';
+    }
+  }
+
+  // ── Wire up inputs ────────────────────────────────────────────────────────
+  function bindField(key, slId, numId, displayId, formatFn) {
+    const sl = document.getElementById(slId);
+    const num = document.getElementById(numId);
+    const disp = document.getElementById(displayId);
+
+    const isAcv = key === 'acv';
+
+    function updateDisplay(v) {
+      disp.textContent = formatFn(v);
+    }
+
+    // Slider → state + number input
+    sl.addEventListener('input', () => {
+      const rawVal = parseInt(sl.value, 10);
+      const v = isAcv ? sliderToAcv(rawVal) : rawVal;
+      state[key] = v;
+      num.value = v;
+      updateDisplay(v);
+      calculate();
+    });
+
+    // Number input → state + slider
+    num.addEventListener('input', () => {
+      let v = parseInt(num.value, 10);
+      if (isNaN(v)) return;
+      const min = parseInt(num.min, 10);
+      const max = parseInt(num.max, 10);
+      v = Math.min(max, Math.max(min, v));
+      state[key] = v;
+      sl.value = isAcv ? acvToSlider(v) : v;
+      updateDisplay(v);
+      calculate();
+    });
+
+    // Initial display
+    updateDisplay(state[key]);
+  }
+
+  bindField('proposals', 'sl-proposals', 'num-proposals', 'val-proposals', v => v);
+  bindField('acv',       'sl-acv',       'num-acv',       'val-acv',       v => fmt(v));
+  bindField('winrate',   'sl-winrate',   'num-winrate',   'val-winrate',   v => v + '%');
+  bindField('hours',     'sl-hours',     'num-hours',     'val-hours',     v => v + ' hrs');
+  bindField('rate',      'sl-rate',      'num-rate',      'val-rate',      v => '$' + v + '/hr');
+
+  // Set ACV slider to correct initial position
+  document.getElementById('sl-acv').value = acvToSlider(state.acv);
+
+  calculate();
+</script>
+</body>
+</html>
