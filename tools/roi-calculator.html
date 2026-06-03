@@ -284,6 +284,31 @@
     margin-top: 2px;
   }
 
+  .roi-breakdown {
+    margin-top: 12px;
+    border-top: 1px solid rgba(181,143,48,0.25);
+    padding-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .roi-breakdown-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+  }
+
+  .roi-breakdown-label {
+    color: #8a6a10;
+  }
+
+  .roi-breakdown-val {
+    font-weight: 700;
+    color: #5a4000;
+  }
+
   /* CTA */
   .cta-wrap {
     margin-top: 32px;
@@ -337,37 +362,37 @@
     <div class="field">
       <label>
         Proposals submitted per month
-        <span class="value-display" id="val-proposals">10</span>
+        <span class="value-display" id="val-proposals">8</span>
       </label>
       <div class="slider-row">
-        <input type="range" id="sl-proposals" min="1" max="300" value="10" step="1">
-        <input type="number" id="num-proposals" min="1" max="300" value="10">
+        <input type="range" id="sl-proposals" min="1" max="30" value="8" step="1">
+        <input type="number" id="num-proposals" min="1" max="30" value="8">
       </div>
-      <div class="range-labels"><span>1</span><span>300</span></div>
+      <div class="range-labels"><span>1</span><span>30</span></div>
     </div>
 
-    <!-- Average contract value (log scale) -->
+    <!-- Average contract value (linear scale) -->
     <div class="field">
       <label>
         Average contract value
-        <span class="value-display" id="val-acv">$50,000</span>
+        <span class="value-display" id="val-acv">$250,000</span>
       </label>
       <div class="slider-row">
-        <input type="range" id="sl-acv" min="0" max="1000" value="459" step="1">
-        <input type="number" id="num-acv" min="10000" max="1000000000" value="50000" step="1000">
+        <input type="range" id="sl-acv" min="25000" max="250000000" value="250000" step="25000">
+        <input type="number" id="num-acv" min="25000" max="250000000" value="250000" step="25000">
       </div>
-      <div class="range-labels"><span>$10k</span><span>$1B</span></div>
+      <div class="range-labels"><span>$25k</span><span>$250M</span></div>
     </div>
 
     <!-- Current win rate -->
     <div class="field">
       <label>
         Current win rate
-        <span class="value-display" id="val-winrate">25%</span>
+        <span class="value-display" id="val-winrate">28%</span>
       </label>
       <div class="slider-row">
-        <input type="range" id="sl-winrate" min="5" max="60" value="25" step="1">
-        <input type="number" id="num-winrate" min="5" max="60" value="25">
+        <input type="range" id="sl-winrate" min="5" max="60" value="28" step="1">
+        <input type="number" id="num-winrate" min="5" max="60" value="28">
       </div>
       <div class="range-labels"><span>5%</span><span>60%</span></div>
     </div>
@@ -376,11 +401,11 @@
     <div class="field">
       <label>
         Hours spent per proposal
-        <span class="value-display" id="val-hours">20 hrs</span>
+        <span class="value-display" id="val-hours">40 hrs</span>
       </label>
       <div class="slider-row">
-        <input type="range" id="sl-hours" min="4" max="80" value="20" step="1">
-        <input type="number" id="num-hours" min="4" max="80" value="20">
+        <input type="range" id="sl-hours" min="4" max="80" value="40" step="1">
+        <input type="number" id="num-hours" min="4" max="80" value="40">
       </div>
       <div class="range-labels"><span>4 hrs</span><span>80 hrs</span></div>
     </div>
@@ -430,9 +455,19 @@
     <div class="roi-banner">
       <div class="roi-icon">📈</div>
       <div class="roi-text">
-        <div class="roi-label">12-Month ROI (Pozal at $299/mo)</div>
+        <div class="roi-label">Total 12-Month Value</div>
         <div class="roi-value" id="out-roi">—</div>
-        <div class="roi-sub" id="out-roi-sub">net gain after $3,588 in Pozal costs</div>
+        <div class="roi-sub">vs. $3,588 in Pozal costs</div>
+        <div class="roi-breakdown">
+          <div class="roi-breakdown-row">
+            <span class="roi-breakdown-label">Revenue uplift</span>
+            <span class="roi-breakdown-val" id="out-rev-uplift">—</span>
+          </div>
+          <div class="roi-breakdown-row">
+            <span class="roi-breakdown-label">Time savings (annual)</span>
+            <span class="roi-breakdown-val" id="out-time-annual">—</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -454,24 +489,16 @@
     return '$' + Math.round(n).toLocaleString();
   };
 
-  // Log-scale helpers for ACV slider (10k–1B)
-  const ACV_MIN = 10000, ACV_MAX = 1000000000;
-  const logMin = Math.log10(ACV_MIN), logMax = Math.log10(ACV_MAX);
-
-  function sliderToAcv(s) {
-    return Math.round(Math.pow(10, logMin + (s / 1000) * (logMax - logMin)));
-  }
-
-  function acvToSlider(v) {
-    return Math.round(((Math.log10(Math.max(v, ACV_MIN)) - logMin) / (logMax - logMin)) * 1000);
-  }
+  // ACV slider is linear — no conversion needed
+  function sliderToAcv(s) { return parseInt(s, 10); }
+  function acvToSlider(v) { return v; }
 
   // ── State ─────────────────────────────────────────────────────────────────
   const state = {
-    proposals: 10,
-    acv: 50000,
-    winrate: 25,
-    hours: 20,
+    proposals: 8,
+    acv: 250000,
+    winrate: 28,
+    hours: 40,
     rate: 65,
   };
 
@@ -482,34 +509,26 @@
     const currentAnnualWins = proposals * (winrate / 100) * 12;
     const currentRev = currentAnnualWins * acv;
 
-    const upliftedWinRate = winrate + 15;
+    const upliftedWinRate = winrate * 1.15;
     const projAnnualWins = proposals * (upliftedWinRate / 100) * 12;
     const projRev = projAnnualWins * acv;
 
     const hoursSavedMonthly = proposals * hours * 0.30;
     const timeSavedValueMonthly = hoursSavedMonthly * rate;
 
-    const pozalCostAnnual = 299 * 12;
     const revUplift = projRev - currentRev;
     const timeSavedAnnual = timeSavedValueMonthly * 12;
-    const netGain = revUplift + timeSavedAnnual - pozalCostAnnual;
-    const roiPct = (netGain / pozalCostAnnual) * 100;
 
     document.getElementById('out-current-rev').textContent = fmt(currentRev);
     document.getElementById('out-proj-rev').textContent = fmt(projRev);
     document.getElementById('out-hours-saved').textContent = Math.round(hoursSavedMonthly) + ' hrs';
     document.getElementById('out-time-value').textContent = fmt(timeSavedValueMonthly);
 
-    const roiEl = document.getElementById('out-roi');
-    const roiSub = document.getElementById('out-roi-sub');
+    const totalValue = revUplift + timeSavedAnnual;
 
-    if (netGain >= 0) {
-      roiEl.textContent = Math.round(roiPct).toLocaleString() + '% ROI';
-      roiSub.textContent = '+' + fmt(netGain) + ' net gain after $3,588 in Pozal costs';
-    } else {
-      roiEl.textContent = fmt(netGain) + ' net';
-      roiSub.textContent = 'Increase proposals or contract value to improve ROI';
-    }
+    document.getElementById('out-roi').textContent = fmt(totalValue);
+    document.getElementById('out-rev-uplift').textContent = fmt(revUplift);
+    document.getElementById('out-time-annual').textContent = fmt(timeSavedAnnual);
   }
 
   // ── Wire up inputs ────────────────────────────────────────────────────────
