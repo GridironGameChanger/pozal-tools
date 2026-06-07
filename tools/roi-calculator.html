@@ -309,6 +309,95 @@
     color: #5a4000;
   }
 
+  /* ── Email Capture ── */
+  .email-section {
+    margin-top: 14px;
+    background: #fff;
+    border: 1.5px solid #e4eef7;
+    border-radius: 12px;
+    padding: 24px;
+  }
+
+  .email-heading {
+    font-size: 16px;
+    font-weight: 700;
+    color: #14171f;
+    margin-bottom: 4px;
+  }
+
+  .email-subtext {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+
+  .email-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .email-input {
+    flex: 1;
+    min-width: 200px;
+    padding: 11px 14px;
+    border: 1.5px solid #dce6ef;
+    border-radius: 9px;
+    font-size: 14px;
+    color: #14171f;
+    outline: none;
+    transition: border-color 0.15s;
+    background: #fafcfe;
+  }
+
+  .email-input::placeholder { color: #aaa; }
+
+  .email-input:focus {
+    border-color: #4b9cd3;
+    background: #fff;
+  }
+
+  .email-input.error { border-color: #e05555; }
+
+  .email-btn {
+    padding: 11px 22px;
+    background: #4b9cd3;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    border: none;
+    border-radius: 9px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s, transform 0.12s;
+  }
+
+  .email-btn:hover { background: #14171f; transform: translateY(-1px); }
+  .email-btn:active { transform: translateY(0); }
+
+  .email-confirm {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #14171f;
+  }
+
+  .email-confirm-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #4b9cd3;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+
   /* ── CTA ── */
   .cta-wrap {
     margin-top: 32px;
@@ -466,9 +555,25 @@
     </div>
   </div>
 
+  <!-- Email Capture -->
+  <div class="email-section" id="email-section">
+    <div class="email-heading">Get your full report</div>
+    <p class="email-subtext">We'll email you a personalized breakdown you can share with your team.</p>
+    <div id="email-form">
+      <div class="email-row">
+        <input class="email-input" type="email" id="email-input" placeholder="Work email address" autocomplete="email">
+        <button class="email-btn" id="email-btn">Send my report</button>
+      </div>
+    </div>
+    <div class="email-confirm" id="email-confirm">
+      <div class="email-confirm-icon">✓</div>
+      <span>Report sent! Check your inbox.</span>
+    </div>
+  </div>
+
   <!-- CTA -->
   <div class="cta-wrap">
-    <a class="cta-btn" href="https://www.pozal.ai" target="_blank" rel="noopener">
+    <a class="cta-btn" href="https://www.pozal.ai/featuresv" target="_blank" rel="noopener">
       See how Pozal gets you there →
     </a>
     <p class="cta-note">No credit card required &nbsp;·&nbsp; Setup in minutes</p>
@@ -557,6 +662,97 @@
 
   // Initial calculation
   calculate();
+
+  // ── Email capture ─────────────────────────────────────────────────────────
+  (function () {
+    const section  = document.getElementById('email-section');
+    const form     = document.getElementById('email-form');
+    const input    = document.getElementById('email-input');
+    const btn      = document.getElementById('email-btn');
+    const confirm  = document.getElementById('email-confirm');
+
+    // If already submitted, skip straight to confirmation
+    if (localStorage.getItem('pozal_email')) {
+      form.style.display    = 'none';
+      confirm.style.display = 'flex';
+      return;
+    }
+
+    btn.addEventListener('click', submit);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+
+    function isValidEmail(v) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+    }
+
+    async function submit() {
+      const email = input.value.trim();
+      if (!isValidEmail(email)) {
+        input.classList.add('error');
+        input.focus();
+        return;
+      }
+      input.classList.remove('error');
+
+      // Snapshot current calculated values
+      const { proposals, acv, winrate, hours, rate } = state;
+      const currentRevenue     = proposals * (winrate / 100) * 12 * acv;
+      const projectedRevenue   = proposals * (winrate * 1.15 / 100) * 12 * acv;
+      const hoursSaved         = proposals * hours * 0.30;
+      const timeSavingsMonthly = hoursSaved * rate;
+      const totalValue         = (projectedRevenue - currentRevenue) + (timeSavingsMonthly * 12);
+
+      // Log to console
+      console.log('[Pozal ROI] Submitting:', email, { proposals, acv, winRate: winrate, hoursPerProposal: hours, hourlyCost: rate });
+
+      // Disable button while sending
+      btn.disabled    = true;
+      btn.textContent = 'Sending…';
+
+      try {
+        const res = await fetch('/api/send-report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email,
+            proposals,
+            acv,
+            winRate:          winrate,
+            hoursPerProposal: hours,
+            hourlyCost:       rate,
+            currentRevenue,
+            projectedRevenue,
+            hoursSaved,
+            timeSavingsMonthly,
+            totalValue,
+          }),
+        });
+
+        if (!res.ok) throw new Error('Send failed');
+
+        // Persist so form doesn't reappear
+        localStorage.setItem('pozal_email', email);
+
+        // Swap form → confirmation
+        form.style.display    = 'none';
+        confirm.style.display = 'flex';
+
+      } catch (err) {
+        console.error('[Pozal ROI] Send error:', err);
+        btn.disabled    = false;
+        btn.textContent = 'Send my report';
+        // Show inline error
+        let errMsg = document.getElementById('email-error');
+        if (!errMsg) {
+          errMsg = document.createElement('p');
+          errMsg.id = 'email-error';
+          errMsg.style.cssText = 'margin:8px 0 0;font-size:13px;color:#e05555;';
+          form.appendChild(errMsg);
+        }
+        errMsg.textContent = 'Something went wrong, please try again.';
+      }
+    }
+  })();
 </script>
 </body>
 </html>
