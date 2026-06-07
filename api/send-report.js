@@ -1,4 +1,4 @@
-export const config = { runtime: 'edge' };
+// Standard Vercel Node.js serverless function (reads process.env correctly)
 
 const FROM_EMAIL = 'hello@pozal.ai';
 const FROM_NAME  = 'Blaz at Pozal';
@@ -107,23 +107,19 @@ function buildHtml({ email, proposals, acv, winRate, hoursPerProposal, hourlyCos
 </html>`;
 }
 
-export default async function handler(req) {
-  console.log('[send-report] Function reached — method:', req.method, 'url:', req.url);
+export default async function handler(req, res) {
+  console.log('[send-report] Function reached — method:', req.method);
 
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-  };
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: corsHeaders });
+    return res.status(204).end();
   }
 
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405, headers: { 'Content-Type': 'application/json', ...corsHeaders },
-    });
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   // ── Debug: API key presence ───────────────────────────────────────────────
@@ -132,28 +128,15 @@ export default async function handler(req) {
   console.log('[send-report] API key prefix:', apiKey ? apiKey.slice(0, 10) : 'NOT SET');
 
   if (!apiKey) {
-    return new Response(JSON.stringify({ error: 'SENDGRID_API_KEY not set' }), {
-      status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders },
-    });
-  }
-
-  let body;
-  try {
-    body = await req.json();
-  } catch {
-    return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
-      status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders },
-    });
+    return res.status(500).json({ error: 'SENDGRID_API_KEY not set' });
   }
 
   const { email, proposals, acv, winRate, hoursPerProposal, hourlyCost,
           currentRevenue, projectedRevenue, hoursSaved,
-          timeSavingsMonthly, totalValue } = body;
+          timeSavingsMonthly, totalValue } = req.body;
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return new Response(JSON.stringify({ error: 'Invalid email' }), {
-      status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders },
-    });
+    return res.status(400).json({ error: 'Invalid email' });
   }
 
   console.log('[send-report] Sending email to:', email);
@@ -186,14 +169,9 @@ export default async function handler(req) {
   console.log('[send-report] SendGrid body:', sgBody);
 
   if (!sgRes.ok) {
-    return new Response(JSON.stringify({ error: 'SendGrid error', status: sgStatus, detail: sgBody }), {
-      status: 502, headers: { 'Content-Type': 'application/json', ...corsHeaders },
-    });
+    return res.status(502).json({ error: 'SendGrid error', status: sgStatus, detail: sgBody });
   }
 
   console.log('[send-report] Email sent successfully to:', email);
-
-  return new Response(JSON.stringify({ ok: true }), {
-    status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders },
-  });
+  return res.status(200).json({ ok: true });
 }
