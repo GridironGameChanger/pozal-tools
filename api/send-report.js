@@ -108,9 +108,22 @@ function buildHtml({ email, proposals, acv, winRate, hoursPerProposal, hourlyCos
 }
 
 export default async function handler(req) {
+  console.log('[send-report] Function reached — method:', req.method, 'url:', req.url);
+
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  };
+
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405, headers: { 'Content-Type': 'application/json' },
+      status: 405, headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
   }
 
@@ -119,7 +132,7 @@ export default async function handler(req) {
     body = await req.json();
   } catch {
     return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
-      status: 400, headers: { 'Content-Type': 'application/json' },
+      status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
   }
 
@@ -130,16 +143,19 @@ export default async function handler(req) {
   // Basic validation
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return new Response(JSON.stringify({ error: 'Invalid email' }), {
-      status: 400, headers: { 'Content-Type': 'application/json' },
+      status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
   }
 
   const apiKey = process.env.SENDGRID_API_KEY;
   if (!apiKey) {
+    console.error('[send-report] SENDGRID_API_KEY is not set');
     return new Response(JSON.stringify({ error: 'SendGrid not configured' }), {
-      status: 500, headers: { 'Content-Type': 'application/json' },
+      status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
   }
+
+  console.log('[send-report] Sending to:', email, '— key present:', !!apiKey);
 
   const html = buildHtml({ email, proposals, acv, winRate, hoursPerProposal, hourlyCost,
                             currentRevenue, projectedRevenue, hoursSaved,
@@ -165,7 +181,7 @@ export default async function handler(req) {
   } catch (err) {
     console.error('[send-report] SendGrid fetch error:', err);
     return new Response(JSON.stringify({ error: 'Failed to reach SendGrid' }), {
-      status: 502, headers: { 'Content-Type': 'application/json' },
+      status: 502, headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
   }
 
@@ -173,11 +189,13 @@ export default async function handler(req) {
     const detail = await sgRes.text();
     console.error('[send-report] SendGrid error:', sgRes.status, detail);
     return new Response(JSON.stringify({ error: 'SendGrid rejected the request' }), {
-      status: 502, headers: { 'Content-Type': 'application/json' },
+      status: 502, headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
   }
 
+  console.log('[send-report] Email sent successfully to:', email);
+
   return new Response(JSON.stringify({ ok: true }), {
-    status: 200, headers: { 'Content-Type': 'application/json' },
+    status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders },
   });
 }
