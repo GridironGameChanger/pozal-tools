@@ -1,6 +1,6 @@
 export const config = { runtime: 'edge' };
 
-const FROM_EMAIL = 'blaz@pozal.ai';
+const FROM_EMAIL = 'hello@pozal.ai';
 const FROM_NAME  = 'Blaz at Pozal';
 
 function fmt(n) {
