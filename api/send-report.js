@@ -116,7 +116,6 @@ export default async function handler(req) {
     'Access-Control-Allow-Headers': 'Content-Type',
   };
 
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
@@ -127,11 +126,22 @@ export default async function handler(req) {
     });
   }
 
+  // ── Debug: API key presence ───────────────────────────────────────────────
+  const apiKey = process.env.SENDGRID_API_KEY;
+  console.log('[send-report] API key present:', !!apiKey);
+  console.log('[send-report] API key prefix:', apiKey ? apiKey.slice(0, 10) : 'NOT SET');
+
+  if (!apiKey) {
+    return new Response(JSON.stringify({ error: 'SENDGRID_API_KEY not set' }), {
+      status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders },
+    });
+  }
+
   let body;
   try {
     body = await req.json();
   } catch {
-    return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
+    return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
       status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
   }
@@ -140,22 +150,13 @@ export default async function handler(req) {
           currentRevenue, projectedRevenue, hoursSaved,
           timeSavingsMonthly, totalValue } = body;
 
-  // Basic validation
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return new Response(JSON.stringify({ error: 'Invalid email' }), {
       status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
   }
 
-  const apiKey = process.env.SENDGRID_API_KEY;
-  if (!apiKey) {
-    console.error('[send-report] SENDGRID_API_KEY is not set');
-    return new Response(JSON.stringify({ error: 'SendGrid not configured' }), {
-      status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders },
-    });
-  }
-
-  console.log('[send-report] Sending to:', email, '— key present:', !!apiKey);
+  console.log('[send-report] Sending email to:', email);
 
   const html = buildHtml({ email, proposals, acv, winRate, hoursPerProposal, hourlyCost,
                             currentRevenue, projectedRevenue, hoursSaved,
@@ -168,27 +169,24 @@ export default async function handler(req) {
     content: [{ type: 'text/html', value: html }],
   };
 
-  let sgRes;
-  try {
-    sgRes = await fetch('https://api.sendgrid.com/v3/mail/send', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-  } catch (err) {
-    console.error('[send-report] SendGrid fetch error:', err);
-    return new Response(JSON.stringify({ error: 'Failed to reach SendGrid' }), {
-      status: 502, headers: { 'Content-Type': 'application/json', ...corsHeaders },
-    });
-  }
+  // ── Call SendGrid ─────────────────────────────────────────────────────────
+  const sgRes = await fetch('https://api.sendgrid.com/v3/mail/send', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const sgStatus = sgRes.status;
+  const sgBody   = await sgRes.text();
+
+  console.log('[send-report] SendGrid status:', sgStatus);
+  console.log('[send-report] SendGrid body:', sgBody);
 
   if (!sgRes.ok) {
-    const detail = await sgRes.text();
-    console.error('[send-report] SendGrid error:', sgRes.status, detail);
-    return new Response(JSON.stringify({ error: 'SendGrid rejected the request' }), {
+    return new Response(JSON.stringify({ error: 'SendGrid error', status: sgStatus, detail: sgBody }), {
       status: 502, headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
   }
