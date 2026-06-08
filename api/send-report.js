@@ -109,10 +109,22 @@ function buildHtml({ email, proposals, acv, winRate, hoursPerProposal, hourlyCos
 
 export default async function handler(req, res) {
   console.log('[send-report] Function reached — method:', req.method);
+  console.log('All env vars:', Object.keys(process.env).filter(k => k.includes('SEND')));
+  console.log('Key value type:', typeof process.env.SENDGRID_API_KEY);
+  console.log('Key length:', process.env.SENDGRID_API_KEY?.length);
 
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'GET') {
+    return res.status(200).json({
+      hasKey: !!process.env.SENDGRID_API_KEY,
+      keyLength: process.env.SENDGRID_API_KEY?.length || 0,
+      keyPrefix: process.env.SENDGRID_API_KEY?.substring(0, 5) || 'none',
+      nodeEnv: process.env.NODE_ENV
+    });
+  }
 
   if (req.method === 'OPTIONS') {
     return res.status(204).end();
